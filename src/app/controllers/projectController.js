@@ -1,6 +1,9 @@
 const router = require('express').Router();
 
-const authMiddleware = require('../middlewares/auth')
+const authMiddleware = require('../middlewares/auth');
+
+const Project = require('../models/project');
+const Task = require('../models/task')
 
 router.use(authMiddleware)
 
