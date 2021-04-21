@@ -8,7 +8,7 @@ const authConfig = require('../../config/auth')
 
 const User = require('../models/user');
 
-router.get('/register', (req, res)=>{
+router.get('/register', (req, res) => {
     res.send('Hello')
 })
 
@@ -21,28 +21,28 @@ router.post('/register', async (req, res) => {
 
         // implantar o conceito de password > 6
         const passwordEncrypt = await bcrypt.hash(password, 10);  // senha encyrpt
-        
+
 
         const newUser = new User({
-            name: name , email: email, password : passwordEncrypt
+            name: name, email: email, password: passwordEncrypt
         });
-        
 
-        await newUser.save(); 
+
+        await newUser.save();
         //const user = await User.create(req.body); // caso fosse feito hash pelo schema
 
         newUser.password = undefined // para que a senha nao apareça ao ser criado (no db fica)
-        const id = newUser.id; 
+        const id = newUser.id;
 
         const token = jwt.sign({ id: id }, authConfig.secret, { expiresIn: 86400 }) // generate error
 
-        return res.send({ 
+        return res.send({
             newUser,
             token: token
         })
     } catch (error) {
-        if(error) throw error;
-        return res.status(200).res.send({msg: "Registrado!"})
+        if (error) throw error;
+        return res.status(200).res.send({ msg: "Registrado!" })
     }
 })
 
@@ -52,55 +52,90 @@ router.post('/authenticate', async (req, res) => {
 
     const user = await User.findOne({ email }).select('+password');
 
-    
+
     if (!user)
-    return res.status(400).send({ error: "Usuário não encontrado ! " });
-    
+        return res.status(400).send({ error: "Usuário não encontrado ! " });
+
     if (!await bcrypt.compare(password, user.password))
-    return res.status(500).send({ error: "Senha inválida!" })
-    
+        return res.status(500).send({ error: "Senha inválida!" })
+
     /* console.log('Normal --->  ', password)
     console.log('Encrypt--->  ', user.password) */
-    
+
     user.password = undefined; // para que a senha nao apareça ao ser logado
 
     const token = jwt.sign({ id: user.id }, authConfig.secret, { expiresIn: 86400 }) // generate error
 
     res.send({
         user: user,
-        token: token 
+        token: token
     })
 })
 
-router.post('/forgot_password', async (req, res)=>{
+router.post('/forgot_password', async (req, res) => {
     const { email } = req.body;
     try {
         const user = await User.findOne({ email })
 
-        if(!user)
+        if (!user)
             return res.status(400).send({ error: "Usuário não encontrado !" });
-        
+
         const token = crypto.randomBytes(20).toString('hex');
 
         const now = new Date();
         now.setHours(now.getHours() + 1);
 
         await User.findByIdAndUpdate(user.id, {
-            '$set' :{
+            '$set': {
                 passwordResetToken: token,
                 passwordResetExpires: now
             }
         });
 
-        mailer.sendEmail({
+        mailer.sendMail({
             to: email,
-            from: "henriquelucashoffmann@gmail.com",
-            
+            from: "contaum01um@gmail.com",
+            template: 'auth/forgot_password',
+            context: { token }
+        }, (err) => {
+            if (err) return res.status(400).send({ error: 'Não foi possivel enviar o email !' })
+
+            return res.send();
         })
 
         /* console.log(token, now) */
     } catch (error) {
         res.status(400).send({ error: "Erro ao recuperar a senha tente novamente mais tarde!" })
+    }
+})
+
+router.post('/reset_password', async (req, res) => {
+    const { email, token, password } = req.body;
+
+    try {
+        const user = await User.findOne({ email })
+            .select('+passwordResetToken passwordResetExpires');
+
+        if (!user)
+            return res.status(400).send({ error: "Usuário não encontrado ! " });
+
+        if (token !== user.passwordResetToken)
+            return res.status(400).send({ error: "Token inválido !" })
+
+        const now = new Date();
+
+        if(now > user.passwordResetExpires)
+            return res.status(400).send({ error : "Esse token já está expirado, favor gerar um novo ! " });
+
+        const passwordEncrypt = await bcrypt.hash(password, 10);  // senha encyrpt
+        
+        user.password = passwordEncrypt;
+
+        await user.save();
+
+        res.send();
+    } catch (error) {
+        res.stats(400).send("Não foi possível mudar de senha, tente mais tarde!")
     }
 })
 
