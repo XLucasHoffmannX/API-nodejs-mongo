@@ -1,14 +1,16 @@
 const router = require('express').Router();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const mailer = require('../../modules/mailer');
 
-const authConfig = require('../config/auth')
+const authConfig = require('../../config/auth')
 
 const User = require('../models/user');
 
-const generateToken = async(params = {})=>{
-    return jwt.sign(params, authConfig.secret, { expiresIn: 86400 })
-}
+router.get('/register', (req, res)=>{
+    res.send('Hello')
+})
 
 router.post('/register', async (req, res) => {
     const { name, email, password } = req.body;
@@ -25,7 +27,7 @@ router.post('/register', async (req, res) => {
             name: name , email: email, password : passwordEncrypt
         });
         
-        
+
         await newUser.save(); 
         //const user = await User.create(req.body); // caso fosse feito hash pelo schema
 
@@ -62,10 +64,44 @@ router.post('/authenticate', async (req, res) => {
     
     user.password = undefined; // para que a senha nao apareça ao ser logado
 
+    const token = jwt.sign({ id: user.id }, authConfig.secret, { expiresIn: 86400 }) // generate error
+
     res.send({
         user: user,
-        token: generateToken({ id: user.id }) 
+        token: token 
     })
+})
+
+router.post('/forgot_password', async (req, res)=>{
+    const { email } = req.body;
+    try {
+        const user = await User.findOne({ email })
+
+        if(!user)
+            return res.status(400).send({ error: "Usuário não encontrado !" });
+        
+        const token = crypto.randomBytes(20).toString('hex');
+
+        const now = new Date();
+        now.setHours(now.getHours() + 1);
+
+        await User.findByIdAndUpdate(user.id, {
+            '$set' :{
+                passwordResetToken: token,
+                passwordResetExpires: now
+            }
+        });
+
+        mailer.sendEmail({
+            to: email,
+            from: "henriquelucashoffmann@gmail.com",
+            
+        })
+
+        /* console.log(token, now) */
+    } catch (error) {
+        res.status(400).send({ error: "Erro ao recuperar a senha tente novamente mais tarde!" })
+    }
 })
 
 module.exports = router

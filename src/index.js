@@ -11,7 +11,8 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }))
 
-app.use('/auth', require('./controllers/authController'))
+app.use('/auth', require('./app/controllers/authController'));
+app.use('/projects', require('./app/controllers/projectController'));
 
 // Connect to mongodb
 const URI = process.env.MONGODB_ACCESS;
