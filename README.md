@@ -6,8 +6,9 @@
     <li>Login e Cadastro de usuários</li>
     <li>Autentição com jwt</li>
     <li>Criação de projetos com tasks</li>
-<ul>
-## Run
+</ul>
+
+##Run
 > Example: **127.0.0.1:3000/** or **localhost:3000**
 
 - **Install the dependencies `npm i`**
