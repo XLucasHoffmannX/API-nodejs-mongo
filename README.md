@@ -6,6 +6,7 @@
     <li>Login e Cadastro de usuários</li>
     <li>Autentição com jwt</li>
     <li>Criação de projetos com tasks</li>
+    <li>Recuperação de senha com email</li>
 </ul>
 
 ## Run
